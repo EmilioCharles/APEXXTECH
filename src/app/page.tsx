@@ -1,36 +1,13 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AgentCard from '../components/AgentCard';
 import ResultsModal from '../components/ResultsModal';
-import { Sparkles, Search, Layers, ShoppingBag, Pencil, BookOpen, SearchX } from 'lucide-react';
+import { Sparkles, Search, Layers, ShoppingBag, Pencil, BookOpen, SearchX, Loader2 } from 'lucide-react';
+// CORRECTED: We now import the single, correct 'Agent' type from our central data file.
+import { Agent } from '../lib/data';
+import Link from 'next/link';
 
-// Agent type definition remains the same
-export interface Agent {
-  id: number;
-  name: string;
-  category: string;
-  description: string;
-  price: string;
-  capabilities: string[];
-  integrations: string[];
-  privacy: string;
-  verified: boolean;
-  performance: {
-    speed: string;
-    accuracy: string;
-    uptime: string;
-  };
-  freeTier: string;
-  logo: string;
-}
-
-// Mock data remains the same
-const mockAgents: Agent[] = [
-    { id: 1, name: 'BackgroundRemover Pro', category: 'Image Editing', description: 'Automated background removal for product photos and graphics.', price: 'Freemium', capabilities: ['Batch Processing', 'API Access', 'High Resolution'], integrations: ['Shopify', 'Figma', 'Adobe Photoshop'], privacy: 'GDPR Compliant', verified: true, performance: { speed: '2s/image', accuracy: '99.2%', uptime: '99.9%' }, freeTier: '5 free images per month', logo: 'https://placehold.co/100x100/4299e1/ffffff?text=BRP' },
-    { id: 2, name: 'ContentGenius AI', category: 'Content Creation', description: 'Generate high-quality blog posts, articles, and marketing copy.', price: 'Subscription', capabilities: ['Multiple Languages', 'SEO Optimization', 'Plagiarism Checker'], integrations: ['WordPress', 'Google Docs', 'SurferSEO'], privacy: 'Data Encrypted', verified: true, performance: { speed: '30s/article', accuracy: '95%', uptime: '99.8%' }, freeTier: '1,000 words/month', logo: 'https://placehold.co/100x100/38b2ac/ffffff?text=CGAI' },
-    { id: 3, name: 'ResearchAssist', category: 'Academic Research', description: 'Summarize research papers, extract data, and generate literature reviews.', price: 'Free', capabilities: ['PDF Analysis', 'Data Extraction', 'Citation Generation'], integrations: ['Zotero', 'Mendeley'], privacy: 'Private by Design', verified: false, performance: { speed: '5s/paper', accuracy: '97%', uptime: '99.5%' }, freeTier: 'Unlimited for academic use', logo: 'https://placehold.co/100x100/9f7aea/ffffff?text=RA' },
-    { id: 4, name: 'EcomOptimizer', category: 'E-commerce', description: 'Analyzes sales data to provide product recommendations and pricing strategies.', price: 'Subscription', capabilities: ['Sales Forecasting', 'Inventory Management', 'A/B Testing'], integrations: ['Shopify', 'WooCommerce', 'Magento'], privacy: 'Enterprise Grade', verified: true, performance: { speed: 'Real-time', accuracy: '94% forecast accuracy', uptime: '99.99%' }, freeTier: '14-day free trial', logo: 'https://placehold.co/100x100/ed8936/ffffff?text=EO' },
-];
+// The old, conflicting 'Agent' interface that was here has been removed.
 
 interface UseCaseTemplate {
     name: string;
@@ -41,7 +18,6 @@ interface UseCaseTemplate {
         capabilities: string[];
     }
 }
-
 const useCaseTemplates: UseCaseTemplate[] = [
     { name: "E-commerce", icon: ShoppingBag, searchTerm: 'e-commerce', filters: { price: 'all', capabilities: ['Batch Processing'] } },
     { name: "Content Creation", icon: Pencil, searchTerm: 'content', filters: { price: 'all', capabilities: ['SEO Optimization'] } },
@@ -49,7 +25,8 @@ const useCaseTemplates: UseCaseTemplate[] = [
 ]
 
 export default function Home() {
-  // State management remains the same
+  const [allAgents, setAllAgents] = useState<Agent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     price: 'all',
@@ -59,7 +36,21 @@ export default function Home() {
   const [selectedAgents, setSelectedAgents] = useState<Agent[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // All handler functions remain the same
+  useEffect(() => {
+    const fetchAgents = async () => {
+      try {
+        const response = await fetch('/api/agents');
+        const data = await response.json();
+        setAllAgents(data);
+      } catch (error) {
+        console.error("Failed to fetch agents:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchAgents();
+  }, []);
+
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value);
   const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
     const { name, value, type } = e.target;
@@ -79,8 +70,7 @@ export default function Home() {
     else console.warn("Please select at least two agents to compare.");
   };
 
-  // Filtering logic remains the same
-  const filteredAgents = mockAgents.filter(agent => (agent.name.toLowerCase().includes(searchTerm.toLowerCase()) || agent.description.toLowerCase().includes(searchTerm.toLowerCase()) || agent.category.toLowerCase().includes(searchTerm.toLowerCase())) && (filters.price === 'all' || agent.price === filters.price) && (filters.capabilities.length === 0 || filters.capabilities.every(cap => agent.capabilities.includes(cap))) && (!filters.verified || agent.verified));
+  const filteredAgents = allAgents.filter(agent => (agent.name.toLowerCase().includes(searchTerm.toLowerCase()) || agent.description.toLowerCase().includes(searchTerm.toLowerCase()) || agent.category.toLowerCase().includes(searchTerm.toLowerCase())) && (filters.price === 'all' || agent.price === filters.price) && (filters.capabilities.length === 0 || filters.capabilities.every(cap => agent.capabilities.includes(cap))) && (!filters.verified || agent.verified));
 
   return (
     <main className="bg-slate-50 min-h-screen">
@@ -101,20 +91,13 @@ export default function Home() {
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
                 <Search className="h-5 w-5 text-slate-400" />
               </div>
-              <input
-                type="text"
-                id="search"
-                placeholder="Describe your problem, e.g., 'remove backgrounds from product photos'"
-                className="w-full pl-11 pr-4 py-4 text-lg border border-slate-300 rounded-full shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                onChange={handleSearchChange}
-                value={searchTerm}
-              />
+              <input type="text" id="search" placeholder="Describe your problem, e.g., 'remove backgrounds from product photos'" className="w-full pl-11 pr-4 py-4 text-lg border border-slate-300 rounded-full shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" onChange={handleSearchChange} value={searchTerm} />
             </div>
           </div>
         </div>
 
         {/* --- Filter & Use Case Section --- */}
-        <div className="mb-12">
+        <div className="mb-12" id="agent-listing">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-6">
               <div className="flex items-center gap-4">
                 <label htmlFor="price" className="text-sm font-medium text-slate-600">Price:</label>
@@ -135,55 +118,52 @@ export default function Home() {
               </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {useCaseTemplates.map(template => (
-                <button
-                    key={template.name}
-                    onClick={() => handleTemplateClick(template)}
-                    className="group flex items-center justify-center text-center p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-lg hover:border-blue-500 transition-all duration-300 transform hover:-translate-y-1"
-                >
-                    <template.icon className="h-6 w-6 mr-3 text-slate-500 group-hover:text-blue-600 transition-colors" />
-                    <span className="font-semibold text-slate-700 group-hover:text-blue-600 transition-colors">{template.name}</span>
-                </button>
-            ))}
+            {useCaseTemplates.map(template => ( <button key={template.name} onClick={() => handleTemplateClick(template)} className="group flex items-center justify-center text-center p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-lg hover:border-blue-500 transition-all duration-300 transform hover:-translate-y-1" > <template.icon className="h-6 w-6 mr-3 text-slate-500 group-hover:text-blue-600 transition-colors" /> <span className="font-semibold text-slate-700 group-hover:text-blue-600 transition-colors">{template.name}</span> </button> ))}
           </div>
         </div>
         
         {/* --- Agent Listing --- */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredAgents.map(agent => (
-            <AgentCard key={agent.id} agent={agent} onSelect={() => handleSelectAgent(agent)} isSelected={!!selectedAgents.find(a => a.id === agent.id)} />
-          ))}
-        </div>
-
-        {/* --- Empty State --- */}
-        {filteredAgents.length === 0 && (
-          <div className="text-center py-20 col-span-full">
-              <SearchX className="mx-auto h-12 w-12 text-slate-400" />
-              <h3 className="mt-4 text-lg font-semibold text-slate-700">No Agents Found</h3>
-              <p className="mt-1 text-slate-500">Try adjusting your search or filters to find what you're looking for.</p>
+        {isLoading ? (
+          <div className="text-center py-20">
+            <Loader2 className="mx-auto h-12 w-12 text-slate-400 animate-spin" />
+            <p className="mt-4 text-slate-500">Loading agents...</p>
           </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {filteredAgents.map(agent => ( <AgentCard key={agent.id} agent={agent} onSelect={() => handleSelectAgent(agent)} isSelected={!!selectedAgents.find(a => a.id === agent.id)} /> ))}
+            </div>
+            {filteredAgents.length === 0 && !isLoading && (
+              <div className="text-center py-20 col-span-full">
+                  <SearchX className="mx-auto h-12 w-12 text-slate-400" />
+                  <h3 className="mt-4 text-lg font-semibold text-slate-700">No Agents Found</h3>
+                  <p className="mt-1 text-slate-500">Try adjusting your search or filters.</p>
+              </div>
+            )}
+          </>
         )}
-
-        {/* --- Comparison Button --- */}
-        {selectedAgents.length > 0 && (
-          <div className="fixed bottom-8 right-8 z-50">
-            <button 
-              onClick={openCompareModal}
-              disabled={selectedAgents.length < 2}
-              className={`flex items-center gap-3 px-6 py-4 font-bold text-white rounded-full shadow-lg transition-all duration-300 transform hover:scale-105 ${selectedAgents.length < 2 ? 'bg-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-cyan-500 hover:shadow-2xl'}`}
-            >
-              <Layers className="h-5 w-5" />
-              <span>Compare ({selectedAgents.length})</span>
-            </button>
-          </div>
-        )}
-
-        {/* --- Comparison Modal --- */}
+        
+        {/* --- Comparison Button & Modal --- */}
+        {selectedAgents.length > 0 && ( <div className="fixed bottom-8 right-8 z-50"> <button onClick={openCompareModal} disabled={selectedAgents.length < 2} className={`flex items-center gap-3 px-6 py-4 font-bold text-white rounded-full shadow-lg transition-all duration-300 transform hover:scale-105 ${selectedAgents.length < 2 ? 'bg-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-cyan-500 hover:shadow-2xl'}`} > <Layers className="h-5 w-5" /> <span>Compare ({selectedAgents.length})</span> </button> </div> )}
         <ResultsModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} agents={selectedAgents} />
       </div>
+
+      {/* --- Pricing Section on Main Page --- */}
+      <section className="py-20 bg-white">
+        <div className="container mx-auto px-4 text-center">
+            <h2 className="text-4xl font-extrabold text-slate-800">Find a Plan for Any Use Case</h2>
+            <p className="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">
+            From free tools for personal projects to powerful subscription models for business, discover agents that match your needs without breaking the bank.
+            </p>
+            <div className="mt-12">
+            <Link href="/pricing" className="px-8 py-4 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 inline-block shadow-lg">
+                Explore All Pricing Models
+            </Link>
+            </div>
+        </div>
+      </section>
+
     </main>
   );
 }
-
-
 

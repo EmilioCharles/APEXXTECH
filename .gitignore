@@ -58,3 +58,6 @@ git commit -m "Resolve merge conflict and finalize .gitignore"
 3. Push your final code to GitHub:
 
 git push -u origin master:main
+
+# clerk configuration (can include secrets)
+/.clerk/

@@ -1,93 +1,83 @@
 import React from 'react';
+import { Agent } from '../lib/data';
+import { BadgeCheck } from 'lucide-react';
+import Link from 'next/link';
 
-// Define the type for an Agent object to ensure data consistency
-interface Agent {
-  id: number;
-  name: string;
-  category: string;
-  description: string;
-  price: string;
-  capabilities: string[];
-  verified: boolean;
-  performance: {
-    accuracy: string;
-    speed: string;
-  };
-  freeTier: string;
-  logo: string;
-}
-
-// Define the types for the props this component accepts
 interface AgentCardProps {
   agent: Agent;
-  onSelect: () => void;
+  onSelect: (agent: Agent) => void;
   isSelected: boolean;
 }
 
-const CheckCircleIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 ml-2" viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-    </svg>
-);
-
 const AgentCard: React.FC<AgentCardProps> = ({ agent, onSelect, isSelected }) => {
+  
+  // This handler ensures that when the checkbox is changed,
+  // it toggles the selection but STOPS the event from bubbling up
+  // and interfering with the parent Link component's navigation.
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation(); // This is the crucial part.
+    onSelect(agent);
+  }
+
   return (
-    <div className={`bg-white rounded-xl shadow-lg overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-2xl ${isSelected ? 'ring-2 ring-blue-500' : ''}`}>
-      <div className="p-6">
-        <div className="flex items-start justify-between">
-            <div className="flex items-center space-x-4">
-                <img className="h-16 w-16 rounded-lg object-cover" src={agent.logo} alt={`${agent.name} logo`} />
-                <div>
+    // The entire card is a link to the agent's detail page.
+    <Link href={`/agent/${agent.id}`} className="block h-full">
+      <div className={`rounded-xl shadow-md transition-all duration-300 h-full flex flex-col cursor-pointer ${isSelected ? 'shadow-2xl ring-2 ring-blue-500' : 'hover:shadow-lg hover:-translate-y-1'}`}>
+        <div className="bg-white rounded-xl overflow-hidden h-full flex flex-col">
+          <div className="p-6 flex-grow">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <img 
+                  className="h-14 w-14 rounded-lg object-cover" 
+                  src={agent.logo} 
+                  alt={`${agent.name} logo`}
+                  onError={(e) => { e.currentTarget.src = 'https://placehold.co/100x100/e2e8f0/94a3b8?text=Error'; }}
+                />
+                <div className="ml-4">
                   <div className="flex items-center">
-                    <h3 className="text-xl font-bold text-gray-900">{agent.name}</h3>
-                    {agent.verified && <CheckCircleIcon />}
+                    <h3 className="text-lg font-bold text-slate-800">{agent.name}</h3>
+                    {agent.verified && (
+                      // REFINED: Wrapped the icon in a span for a more explicit tooltip.
+                      <span title="Verified Agent">
+                        <BadgeCheck 
+                          className="h-5 w-5 text-blue-500 ml-2 flex-shrink-0" 
+                        />
+                      </span>
+                    )}
                   </div>
-                  <p className="text-sm text-blue-500 font-semibold">{agent.category}</p>
+                  <p className="text-sm font-medium text-blue-600">{agent.category}</p>
                 </div>
+              </div>
+              {/* Using a wrapper div to stop the click event on the checkbox area */}
+              <div onClick={(e) => e.stopPropagation()} className="p-2 -mr-2">
+                 <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={handleCheckboxChange} // Use onChange for checkboxes
+                    className="h-5 w-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+                    aria-label={`Select ${agent.name} for comparison`}
+                />
+              </div>
             </div>
-            <input 
-                type="checkbox" 
-                checked={isSelected}
-                onChange={onSelect}
-                className="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-            />
-        </div>
-        
-        <p className="mt-4 text-gray-600 text-sm">{agent.description}</p>
 
-        <div className="mt-4">
-            <h4 className="font-semibold text-gray-800">Capabilities:</h4>
-            <div className="flex flex-wrap gap-2 mt-2">
-                {agent.capabilities.map(cap => (
-                    <span key={cap} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full">{cap}</span>
-                ))}
+            <p className="text-slate-600 text-sm leading-relaxed">{agent.description}</p>
+          </div>
+          
+          <div className="px-6 pb-6 pt-4 bg-slate-50/70">
+            <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Key Capabilities</h4>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {agent.capabilities.slice(0, 3).map(cap => (
+                  <span key={cap} className="px-2.5 py-1 text-xs font-medium bg-slate-200 text-slate-800 rounded-full">
+                      {cap}
+                  </span>
+              ))}
             </div>
-        </div>
-
-        <div className="mt-4 grid grid-cols-2 gap-x-4 text-sm">
-            <div>
-                <span className="font-semibold text-gray-800">Pricing: </span>
-                <span className="text-gray-600">{agent.price}</span>
-            </div>
-            <div>
-                <span className="font-semibold text-gray-800">Free Tier: </span>
-                <span className="text-gray-600">{agent.freeTier}</span>
-            </div>
-             <div>
-                <span className="font-semibold text-gray-800">Accuracy: </span>
-                <span className="text-gray-600">{agent.performance.accuracy}</span>
-            </div>
-             <div>
-                <span className="font-semibold text-gray-800">Speed: </span>
-                <span className="text-gray-600">{agent.performance.speed}</span>
-            </div>
+          </div>
         </div>
       </div>
-      <div className="px-6 py-3 bg-gray-50">
-          <a href="#" className="text-blue-600 font-semibold hover:underline">View Details &rarr;</a>
-      </div>
-    </div>
+    </Link>
   );
-}
+};
 
 export default AgentCard;
+
